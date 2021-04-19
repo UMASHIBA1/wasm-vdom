@@ -1,14 +1,14 @@
 use crate::v_dom::types::{VirtualNode, DOMAttributes, ExpandElement, NodeType, KeyAttribute};
-use crate::v_dom::types::NodeType::ELEMENT_NODE;
+use crate::v_dom::types::NodeType::ElementNode;
+use std::rc::Rc;
 
-enum VNodeOrStr {
-    VirtualNode,
-    str
+pub enum VNodeOrStr<'a> {
+    VNode(Rc<VirtualNode>),
+    StrText(&'a str)
 }
 
-
-fn create_text_vnode(text: &str, real_node: Option<ExpandElement>) -> VirtualNode {
-    VirtualNode::new(text, DOMAttributes::new(), Vec::new(), real_node, NodeType::TEXT_NODE, None)
+pub fn create_text_vnode<'a>(text: &str, real_node: Option<ExpandElement>) -> Rc<VirtualNode> {
+    VirtualNode::new(text, DOMAttributes::new(), Vec::new(), real_node, NodeType::TextNode, None)
 }
 
 pub fn hydrate(
@@ -16,25 +16,25 @@ pub fn hydrate(
     props: DOMAttributes,
     children: Vec<VNodeOrStr>,
     real_node: Option<ExpandElement>
-) -> VirtualNode {
-    let mut vnode_children: Vec<VirtualNode> = Vec::new();
+) -> Rc<VirtualNode> {
+    let mut vnode_children: Vec<Rc<VirtualNode>> = Vec::new();
     for child in children {
         let vnode = match child {
-            VirtualNode(vnode) => vnode,
-            str(text) => create_text_vnode(text, None)
+            VNodeOrStr::VNode(vnode) => vnode,
+            VNodeOrStr::StrText(text) => create_text_vnode(&text, None)
         };
         vnode_children.push(vnode);
     }
 
     let key: Option<KeyAttribute> = match props.get("key") {
-      Some(will_key) => if let Some(key) =  will_key.downcast_ref::<KeyAttribute>() {
-          Some(**key)
-      }else {None},
+      Some(key) => {
+          Some(KeyAttribute::Str(key.clone()))
+      },
         _ => None
     };
 
     VirtualNode::new(
-        name, props,vnode_children,real_node, ELEMENT_NODE, key
+        name, props, vnode_children, real_node, ElementNode, key
     )
 
 }
